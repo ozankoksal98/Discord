@@ -1,6 +1,6 @@
 <?php
 
-namespace WebSocket;
+include_once("Base.php");
 
 class Client extends Base {
   protected $socket_uri;

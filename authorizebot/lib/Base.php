@@ -1,6 +1,5 @@
 <?php
 
-namespace WebSocket;
 
 class Base {
   protected $socket, $is_connected = false, $is_closing = false, $last_opcode = null,
