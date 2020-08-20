@@ -1,7 +1,7 @@
 <?php
 
     include_once "Form.php";
-    
+    include_once "DiscordClient.php";
 
     class DiscordIntegration{
         private $partnerName = 'discord';
@@ -13,11 +13,11 @@
         private $form;
         
 
-        public function __construct($user, $formID){
-            $this->user =$user ;
+        public function __construct( $formID, $token ,$guildID){
             $this->formID = $formID;
-            $this->form = new Form($formID);
+            $this->form = new Form($formID, $this->apiKey);
             $this->submissionID = $this->getLastSubmission()["id"];
+            $this->api = new DiscordClient($token ,$guildID);
         }
 
         public function getForm()
@@ -28,7 +28,11 @@
         public function getApiKey(){
             return $this->apiKey;
         }
-
+        
+        public function getSubmissions(){
+            $temp = Requests::getRequest("https://api.jotform.com/form/".$this->formID."/submissions?apiKey=".$this->apiKey,null);
+            return json_decode($temp,true)["content"];
+        }
 
         public function getLastSubmission(){
             //returns array for last submission of form

@@ -2,17 +2,18 @@
 <?php
 
 include_once "requests.php";
-include_once "DiscordIntegration.php";
 //to-do implement splitting longer messages
 class DiscordClient{
     private $baseUrl = "https://discord.com/api";
-    private $token = "NzQ0OTkwNTUyMTUxNDI1MTI0.XzrQhA.3pBq_Rs899Lev-0npCEN3nF5N3E";
+    private $token ;
     private $authHeader ;
     private $guildID ;
+    private $integration;
 
-    public function __construct(){
-        $this->authHeader = 'Authorization: Bot ' . $this->token;
-        $this->guildID = $_GET["guild_id"];
+    public function __construct($token,$guildID){
+        $this->token = $token;
+        $this->authHeader = 'Authorization: Bot ' . $token;
+        $this->guildID = $guildID;
     }
 
     public function getauthHeader(){
@@ -73,34 +74,21 @@ class DiscordClient{
         return json_decode($json_string,true);
     }
 
-    public function listChannels(){
+    public function getTextChannels(){
         $channelArr = json_decode($this->getGuildChannels(),true);
         foreach($channelArr as $channel=>$v){
             //remove all channels and categories except text channels
-            if($v["type"]!="0"){
+            if($v["type"]!="0" ){
                 unset($channelArr[$channel]);
             }
         }
         usort($channelArr,function($a,$b){
             return intval($a["position"])-intval($b["position"]);
         });
-
-        foreach($channelArr as $channelnum=>$v){
-            
-            echo $channelnum.") ".$v["name"]."<br>";
-            
-        }
         return $channelArr;
     }
     
 }
-$client = new DiscordClient();
-$int = new DiscordIntegration("user","202314428827050");
-$str = $int->buildMessage();
-echo str_replace("\n","<br>",$str);
-
-$client->sendMessage("745645476589600830",$str);
-
 // "genel" channel id = 744853637385420924
 // guild id = 744853637385420921
 ?>
