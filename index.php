@@ -18,7 +18,20 @@
     <html>
 
     <body>
-       
+
+    <ul>
+  <li class="dropdown">
+    <a  data-toggle="dropdown" class="dropdown-toggle">
+      Dropdown Form<b class="caret"></b>
+    </a>
+    <ul class="dropdown-menu">
+      <li><label class="checkbox"><input type="checkbox">Two</label></li>
+      <li><label class="checkbox"><input type="checkbox">Two</label></li>
+    </ul>
+  </li>
+</ul>
+
+
 
 
     </body>
@@ -53,37 +66,24 @@
 
     include_once "AuthorizeBot.php";
     include_once "DiscordIntegration.php";
-    $token = "NzQ1NjcwOTUzMTc4MjM0OTQw.Xz1KMQ.KTTVAweR7hKO4MFsqkOvk0Wu6xg";
+    $token = "";
     $formID = "202314428827050";
-    $clientID = "745670953178234940";
+    $clientID = "";
 
     $bot = new AuthorizeBot($clientID,"http://localhost/curl/index.php",$token);
     $integration = new DiscordIntegration($formID,$token,$_GET["guild_id"]);
 
-/* <div class="container">
-  <div class="row">
-    <div class="col-sm">
-      One of three columns
-    </div>
-    <div class="col-sm">
-      One of three columns
-    </div>
-    <div class="col-sm">
-      One of three columns
-    </div>
-  </div>
-</div> */
-
-
-    echo '<div class="container">
+    echo '<div class="container-fluid">
     <div class="row">
-      <div class="col">';
+      <div class="col bg-primary text-white">';
 
     //choose channel
     echo "Choose channel(s) to send submissions: <br>";
     echo '<form action="'.getReturnAddress().'" method="post">';
     foreach($integration->getApi()->getTextChannels() as $channel => $v){
-        echo  '<input type="checkbox" name="'.$v["id"].'" value = "channel" ">  '.$v["name"].'<br>';
+        echo  '<div class="checkbox">
+        <label><input type="checkbox" name="'.$v["id"].'" value = "channel" ">  '.$v["name"].'</label>
+        </div>';
     };
     $chosenChannels = [];
     foreach($_POST as $channel =>$v){
@@ -91,7 +91,10 @@
             $chosenChannels[] = $channel;
         }
     }
-    echo '</div><div class="col">';
+
+    echo implode(",",$chosenChannels);
+    echo '</div><div class="col bg-danger text-white">';
+    echo "Choose fields you want to send: <br>";
 
     //choose fields
     $skippedFields = ["control_button","control_head","control_captcha","control_divider","control_text","control_image","control_inline"];
@@ -99,9 +102,13 @@
     $usedFields = array();
     foreach($integration->getForm()->getQuestions() as $question){
         if(!in_array($question["type"],$skippedFields)){
-            echo  '<input type="checkbox" name="'.$question["type"].'" value = "questions" >  '.$question["text"].'<br>';
+            echo  '<div class="checkbox">
+            <label><input type="checkbox" name="'.$question["order"].'" value = "questions" >  '.$question["text"].'</label>
+            </div>';
         }else if($question["type"]=="control_inline") {
-            echo  '<input type="checkbox" name="'.$question["type"].'" value = "questions" >  Fill the blanks <br>';
+            echo  '<div class="checkbox">
+            <label><input type="checkbox" name="'.$question["order"].'" value = "questions" >  Fill the blanks </label>
+            </div>';
         }
     }
     $chosenQuestions = [];
@@ -110,10 +117,12 @@
             $chosenQuestions[] = $question;
         }
     }   
+    echo implode(",",$chosenQuestions);
 
     echo '</div>
-    <div class="col">';
+    <div class="col bg-warning ">';
     //choose submissions
+     echo "Choose submissions :<br>";
     foreach($integration->getForm()->getSubmissions() as $subm){
         $submID = $subm["id"];
         $submName;
@@ -123,7 +132,9 @@
                 break;
             }
         }
-        echo  '<input type="checkbox" name="'.$submID.'" value = "submissions" >  '.$submName.'<br>';
+        echo  '<div class="checkbox">
+        <label><input type="checkbox" name="'.$submID.'" value = "submissions" >  '.$submName.'</label>
+        </div>';
     }
 
     $chosenSubmissions = [];
@@ -132,19 +143,23 @@
             $chosenSubmissions[] = $submission;
         }
     }
-
+    echo implode(",",$chosenSubmissions);
 
     echo ' </div> </div> </div> 
     <div class="row"> <div class="mx-auto" style="width: 200px;">
     <input type="submit" >
-  </div></form></div>  
-  ';
+    </div></form></div>  
+    ';
 
-    if(!empty($_POST)){
-        //print_r($_POST);
+    foreach($chosenChannels as $channel){
+        foreach($chosenSubmissions as $subm){
+            $integration->getApi()->sendMessage($channel,"",$integration->buildMessage($chosenQuestions,$formID,$subm));
+        }
     }
 
-    //format messages to embed and send them ,
+   
+    //format messages to embed and 
+    //send chosen submissions 
 
     /*
     This was discussed at some length on the Discord API server when this issue was opened, but I'll reiterate my thoughts on this here.

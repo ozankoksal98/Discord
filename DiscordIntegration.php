@@ -29,9 +29,14 @@
             return $this->apiKey;
         }
         
-        public function getSubmissions(){
+        public function getSubmission($submID){
             $temp = Requests::getRequest("https://api.jotform.com/form/".$this->formID."/submissions?apiKey=".$this->apiKey,null);
-            return json_decode($temp,true)["content"];
+            foreach(json_decode($temp,true)["content"] as $key){
+                if($key["id"] == $submID){
+                    return $key;
+                }
+            }
+            return null;
         }
 
         public function getLastSubmission(){
@@ -56,45 +61,70 @@
         }
 
         
-        
-        public function buildMessage(){
-            $value = "You have received a submission for your form: ". $this->form->getTitle()."\n";
-            $answers = $this->getLastSubmission()["answers"];
+        //dont forget to close }
+        public function buildMessage($questions,$formID,$submID){
+            $form = new Form($formID, $this->apiKey);
+            $value = '{"title" : "Form Submission",';
+            $value .= ' "description": "You have received a new submission for your form: ['. $form->getTitle().'](https://www.jotform.com/inbox/'.$formID.'/'.$submID .')" ,';
+            $value .= '"url": "https://www.jotform.com/'.$formID.'",';
+            $value .= '"color": 16482326,';
+            $value .= '"footer": {
+                "icon_url": "https://cdn.discordapp.com/attachments/744853637385420924/746281636680695828/jotform-icon-transparent-560x560.png",
+                "text": "Jotform "
+              },"thumbnail": {
+                "url": "https://cdn.discordapp.com/attachments/744853637385420924/746281306832371742/jotform-logo-orange-800x800.png"
+              },"author": {
+                "name": "JotForm",
+                "url": "https://jotform.com",
+                "icon_url": "https://cdn.discordapp.com/attachments/744853637385420924/746281636680695828/jotform-icon-transparent-560x560.png"
+              },"fields": [';
             
-            usort($answers,function($a,$b){
-                return intval($a["order"])- intval($b["order"]);
-            });
-            
+            $answers = $this->getSubmission($submID)['answers'];
             //print_r($answers);
+            usort($answers,function($a,$b){
+                return intval($a['order'])- intval($b['order']);
+            });
 
-            $skippedFields = ["control_button","control_head","control_captcha","control_divider","control_text","control_image"];
+            $val_arr = array();
+            $skippedFields = ['control_button','control_head','control_captcha','control_divider','control_text','control_image'];
             foreach($answers as $key){
-                if(!in_array($key["type"],$skippedFields)){
-                    if(isset($key["prettyFormat"])){
-                        if($key["type"]=="control_address"){
-                            $value .= "**".$key["text"]."**"." : "."\n";
-                            $value .= $key["answer"]["addr_line1"].",".$key["answer"]["addr_line2"]."\n";
-                            $value .= $key["answer"]["city"].",".$key["answer"]["state"].",".$key["answer"]["postal"]."\n";
-                            $value .= $key["answer"]["country"]."\n";
-
-                        }else if($key["type"]=="control_datetime"){
+                if(!in_array($key['type'],$skippedFields) && in_array($key['order'],$questions)){
+                    if(isset($key['prettyFormat'])){
+                        if($key['type']=='control_address'){
+                            $str = $key['answer']['addr_line1'].','.$key['answer']['addr_line2'].'\n';
+                            $str .= $key['answer']['city'].','.$key['answer']['state'].','.$key['answer']['postal'].'\n';
+                            $str .= $key['answer']['country'].'\n';
+                            $val_arr[] =  '{
+                                "name": "'.$key['text'].'",
+                                "value": "'.$str.'"
+                              }';
+                            
+                        }else if($key['type']=='control_datetime'){
                             $dateFormat = array();
-                            foreach($key["answer"] as $k=>$v){
-                                $dateFormat[] = $k;
+                            foreach($key['answer'] as $k=>$v){
+                                $dateFormat[] = $k[0];
                             }
-                            $dateFormat = implode("-",$dateFormat);
-                            $value .= "**".$key["text"]."**"." : ".$key["prettyFormat"]." , (".$dateFormat.")"."\n";
+                            $dateFormat = implode('-',$dateFormat);
+                            $val_arr[] =  '{
+                                "name": "'.$key['text'].'",
+                                "value": "'.$key['prettyFormat'].','.$dateFormat.'"
+                              }';
 
-                        }else if($key["type"]=="control_inline"){
-                            $value .=  "**"."Blanks :"."**"."\n";
+                        }else if($key['type']=='control_inline'){
+                            $str = "";
                             $i =1 ;
-                            foreach(array_values($key["answer"]) as $val){
-                                $value .=  "Blank ".strval($i)." : ". $val . "\n";
+                            foreach(array_values($key['answer']) as $val){
+                                $str .=  'Blank '.strval($i).' : '. $val . '\n';
                                 $i++;
                             }
+                            $val_arr[] =  '{
+                                "name": "Blanks :",
+                                "value": "'.$str.'"
+                              }';
 
-                        }else if($key["type"]=="control_fileupload"){
-                            $url = $key["prettyFormat"];
+                        }else if($key['type']=='control_fileupload'){
+                            //bury links
+                            $url = $key['prettyFormat'];
                             $joinedValue= [];
                             $allLinks;
                             preg_match_all('/href=".*?"/', $url, $allLinks);
@@ -102,56 +132,92 @@
                                 $link = str_replace(['href="','"'], '', $link);
                                 array_push($joinedValue, $link);
                             }
-                            
-                            $value .= "**".$key["text"]."**"." :\n";
-                            $value .= implode("\n",$joinedValue) . "\n";
-                        }
-                        
-                        else if($key["type"]=="control_matrix"){
-                            $value .= "**".$key["text"]."**"."\n";
-                            foreach($key["answer"] as $k=>$v){
-                                $value .= $k." : ".$v."\n";
+                            $titles = [];
+                            foreach($key["answer"] as $k){
+                                $title = explode($submID."/",$k);
+                                $titles[] = $title[count($title)-1];
+                            };
+                            $str = [];
+                            for($i = 0 ;$i <count($titles);$i++ ){
+                                $str[]='['.$titles[$i].']('.$joinedValue[$i].')';
                             }
+                            
+                            $val_arr[] =  '{
+                                "name": "'.$key['text'].'",
+                                "value": "'.implode('\n',$str).'"
+                              }';
                         }
                         
-                        else if($key["type"]=="control_payment"){
-                            $value .= "**".$key["text"]."**"."\n";
-                            $payArr = json_decode($key["answer"]["paymentArray"],true);
-                            foreach($payArr["product"] as $k=> $v){
-                                $temp = explode("(",$v);
-                                $value .= $temp[0];
-                                $temp = explode(",",$temp[1]);
-                                //print_r($temp);
+                        else if($key['type']=='control_matrix'){
+                            $str = "";
+                            foreach($key['answer'] as $k=>$v){
+                                $str .= $k.' : '.$v.'\n';
+                            }
+                            $val_arr[] =  '{
+                                "name": "'.$key['text'].'",
+                                "value": "'.$str.'"
+                              }';
+                        }
+                        
+                        else if($key['type']=='control_payment'){
+                            $payArr = json_decode($key['answer']['paymentArray'],true);
+                            $str="";
+                            foreach($payArr['product'] as $k=> $v){
+                                $temp = explode('(',$v);
+                                $str .= $temp[0];
+                                $temp = explode(',',$temp[1]);
                                 if(count($temp)>1){
-                                    $value .= "(".str_replace([" Quantity: ",")"],"",$temp[1])  .") : ";
-                                    $value .= str_replace(["Amount: ",")"],"",$temp[0]). "\n";
+                                    $str .= '('.str_replace([' Quantity: ',')'],'',$temp[1])  .') : ';
+                                    $str .= str_replace(['Amount: ',')'],'',$temp[0]). '\n';
 
                                 }else{
-                                    $value .= " : ".str_replace(["Amount: ",")"],"",$temp[0]) . "\n";
+                                    $str .= ' : '.str_replace(['Amount: ',')'],'',$temp[0]) . '\n';
                                 }
                             
 
                             };
-                            $value .= "Total : ".$payArr["total"]." ".$payArr["currency"]."\n";
+                            $str .= 'Total : '.$payArr['total'].' '.$payArr['currency'].'\n';
+                            $val_arr[] =  '{
+                                "name": "'.$key['text'].'",
+                                "value": "'.$str.'"
+                              }';
+
                             
                         }
 
                         else{
-                            $value .= "**".$key["text"]."**"." : ".$key["prettyFormat"]."\n";
+                            $val_arr[] =  '{
+                                "name": "'.$key['text'].'",
+                                "value": "'.$key['prettyFormat'].'"
+                              }';
                         }
                         
                     }else{
-                        if(is_array($key["answer"])){
-                            $value .= "**".$key["text"]."**"." : ";
-                            $value .= implode(", ",array_values($key["answer"]));
-                            $value .= "\n";
+                        if(is_array($key['answer'])){
+                            $str .= implode(', ',array_values($key['answer']));
+                            $str .= '\n';
+                            $val_arr[] =  '{
+                                "name": "'.$key['text'].'",
+                                "value": "'.$str.'"
+                              }';
+                        }else if($key["type"]=="control_signature"){
+                            $val_arr[] =  '{
+                                "name": "'.$key['text'].'",
+                                "value": "[Signature]('.$key['answer'].')"
+                              }';
+                        
                         }else{
-                            $value .= "**".$key["text"]."**"." : ".$key["answer"]."\n";
+                            $val_arr[] =  '{
+                                "name": "'.$key['text'].'",
+                                "value": "'.$key['answer'].'"
+                              }';
                         }
                     }
-                }else{
                 }
             }
+            $value .= implode(",",$val_arr);
+            $value .= ' ]
+        }';
             return $value;
         }
 

@@ -62,11 +62,11 @@ class DiscordClient{
         }',true),array("Content-Type: multipart/form-data",$this->getauthHeader()));
     }
 
-    public function sendMessage($channelID,$content){
+    public function sendMessage($channelID,$content,$embed){
     
     //Send custom message
     //can only send text up to 2000 characters
-        echo Requests::postRequest($this->baseUrl."/channels/".$channelID."/messages", array("content"=>$content,"tts"=> "false"),
+    return Requests::postRequest($this->baseUrl."/channels/".$channelID."/messages", array("content"=>$content,"tts"=> "false","payload_json"=>'{"embed": '.$embed."}"),
             array("Content-Type: multipart/form-data",$this->getauthHeader()));
     }
 
