@@ -39,6 +39,10 @@
             return null;
         }
 
+        public function getFormNew($formID){
+            return new Form($formID,$this->apiKey);
+        }
+
         public function getLastSubmission(){
             //returns array for last submission of form
             $temp = Requests::getRequest("https://api.jotform.com/form/".$this->formID."/submissions?apiKey=".$this->apiKey,null);
@@ -58,6 +62,11 @@
                 echo "<br>";
 
             }
+        }
+
+        public function getForms(){
+            return json_decode(Requests::getRequest("https://api.jotform.com/user/forms",
+                array("APIKEY: ".$this->apiKey)),true)["content"];
         }
 
         

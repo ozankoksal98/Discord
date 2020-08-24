@@ -17,7 +17,6 @@
             $this->apiKey = $apiKey;
             $this->formInfo = json_decode(Requests::getRequest("https://api.jotform.com/form/".$this->formID."?apiKey=".$this->apiKey,null),true)["content"];
             $this->title = $this->formInfo["title"];
-            
         }
 
         public function getSubmissions(){
@@ -29,7 +28,6 @@
                 });
                 $temp[$k]["answers"] = $t;
             }
-            //print_r($temp);
             return $temp;
         }
 
