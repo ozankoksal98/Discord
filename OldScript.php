@@ -16,11 +16,12 @@
     include_once "AuthorizeBot.php";
     include_once "DiscordIntegration.php";
     $token = "";
-    $formID = "202314428827050";
+    $formID = "202251323327039";
     $clientID = "";
+    /*
     if (!isset($_GET["type"])) {
         $bot = new AuthorizeBot($clientID, "http://localhost/curl/Discord/index.php", $token);
-    }
+    }*/
     
     $integration = new DiscordIntegration($formID, $token, 744853637385420921);
 

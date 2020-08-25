@@ -7,30 +7,21 @@
         private $partnerName = 'discord';
         private $apiKey = "fb164eb729c73fd5456f005f93a2715c";
         private $user;
-        private $formID;
         private $submissionID;
         private $api;
-        private $form;
+        
         
 
-        public function __construct( $formID, $token ,$guildID){
-            $this->formID = $formID;
-            $this->form = new Form($formID, $this->apiKey);
-            $this->submissionID = $this->getLastSubmission()["id"];
+        public function __construct(  $token ,$guildID){
             $this->api = new DiscordClient($token ,$guildID);
-        }
-
-        public function getForm()
-        {
-            return $this->form;
         }
 
         public function getApiKey(){
             return $this->apiKey;
         }
         
-        public function getSubmission($submID){
-            $temp = Requests::getRequest("https://api.jotform.com/form/".$this->formID."/submissions?apiKey=".$this->apiKey,null);
+        public function getSubmission($submID,$formID){
+            $temp = Requests::getRequest("https://api.jotform.com/form/".$formID."/submissions?apiKey=".$this->apiKey,null);
             foreach(json_decode($temp,true)["content"] as $key){
                 if($key["id"] == $submID){
                     return $key;
@@ -43,11 +34,6 @@
             return new Form($formID,$this->apiKey);
         }
 
-        public function getLastSubmission(){
-            //returns array for last submission of form
-            $temp = Requests::getRequest("https://api.jotform.com/form/".$this->formID."/submissions?apiKey=".$this->apiKey,null);
-            return json_decode($temp,true)["content"]["0"];
-        }
 
         public function listForms(){
             //only list enabled forms
@@ -74,8 +60,8 @@
         public function buildMessage($questions,$formID,$submID){
             $form = new Form($formID, $this->apiKey);
             $value = '{"title" : "Form Submission",';
-            $value .= ' "description": "You have received a new submission for your form: ['. $form->getTitle().'](https://www.jotform.com/inbox/'.$formID.'/'.$submID .')" ,';
-            $value .= '"url": "https://www.jotform.com/'.$formID.'",';
+            $value .= ' "description": "You have received a new submission for your form: ['. $form->getTitle().'](https://www.jotform.com/'.$formID.')" ,';
+            $value .= '"url": "https://www.jotform.com/inbox/'.$formID.'/'.$submID .'",';
             $value .= '"color": 16482326,';
             $value .= '"footer": {
                 "icon_url": "https://cdn.discordapp.com/attachments/744853637385420924/746281636680695828/jotform-icon-transparent-560x560.png",
@@ -88,7 +74,7 @@
                 "icon_url": "https://cdn.discordapp.com/attachments/744853637385420924/746281636680695828/jotform-icon-transparent-560x560.png"
               },"fields": [';
             
-            $answers = $this->getSubmission($submID)['answers'];
+            $answers = $this->getSubmission($submID,$formID)['answers'];
             //print_r($answers);
             usort($answers,function($a,$b){
                 return intval($a['order'])- intval($b['order']);
